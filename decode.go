@@ -445,10 +445,7 @@ func (d *Decoder) ReadString() string {
 		return ""
 	}
 
-	b := make([]byte, length)
-	if _, err := d.Read(b); err != nil {
-		return ""
-	}
+	b, _ := d.ReadN(length)
 
 	return string(b)
 }
@@ -461,6 +458,46 @@ func (d *Decoder) Read(b []byte) (n int, _ error) {
 	n, d.err = d.r.Read(b)
 
 	return n, d.err
+}
+
+const maxReadNBufferSize = 1024
+
+// This is safer to use, then Read() method, because it does not require to create entire buffer from the start.
+// It helps to avoid huge allocations in case of corrupted payload.
+// And it is not as slow as reading byte by byte.
+func (d *Decoder) ReadN(bytesToRead int) ([]byte, error) {
+	if d.err != nil {
+		return nil, d.err
+	}
+	if bytesToRead == 0 {
+		return []byte{}, nil
+	}
+
+	res := make([]byte, min(maxReadNBufferSize, bytesToRead))
+	_, d.err = d.r.Read(res)
+	if bytesToRead <= maxReadNBufferSize || d.err != nil {
+		return res, d.err
+	}
+
+	bytesToRead -= maxReadNBufferSize
+	batchBuff := make([]byte, min(maxReadNBufferSize, bytesToRead))
+
+	for bytesToRead > 0 {
+		var n int
+		n, d.err = d.r.Read(batchBuff[:min(maxReadNBufferSize, bytesToRead)])
+		if d.err != nil {
+			return nil, d.err
+		}
+
+		res = append(res, batchBuff[:n]...)
+		bytesToRead -= n
+	}
+
+	if bytesToRead < 0 {
+		panic(fmt.Sprintf("unexpected bytesToRead value: %v", bytesToRead))
+	}
+
+	return res, nil
 }
 
 //nolint:gocyclo,funlen
@@ -1077,9 +1114,7 @@ func (d *Decoder) decodeAsByteArray(dec func() error) error {
 	// skip length and continue reading. But that may result in confusing decoding errors in case of corrupted data.
 	// So more reliable way is to separate those bytes and decode from them.
 
-	b := make([]byte, d.ReadLen())
-	d.Read(b)
-
+	b, _ := d.ReadN(d.ReadLen())
 	if d.err != nil {
 		return d.handleErrorf("bytearr: %w", d.err)
 	}
