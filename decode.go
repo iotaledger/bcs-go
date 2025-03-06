@@ -875,8 +875,6 @@ func (d *Decoder) decodeSlice(v reflect.Value, typeOpts TypeOptions) error {
 	return d.decodeArray(v, length, typeOpts)
 }
 
-const decodeArrayMaxBufferSizeInBytes = 1024
-
 // func (d *Decoder) decodeArray(v reflect.Value, typeOpts TypeOptions) error {
 func (d *Decoder) decodeArray(v reflect.Value, n int, typeOpts TypeOptions) error {
 	isSlice := v.Kind() == reflect.Slice
