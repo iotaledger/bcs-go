@@ -1,6 +1,8 @@
 package bcs_test
 
 import (
+	"errors"
+	"io"
 	"math"
 	"testing"
 
@@ -30,6 +32,33 @@ func TestArrayCodec(t *testing.T) {
 
 	bcs.TestCodecAndBytes(t, []string{"aaa", "bbb"}, []byte{0x2, 0x3, 0x61, 0x61, 0x61, 0x3, 0x62, 0x62, 0x62})
 	bcs.TestCodecAndBytes(t, [][]int16{{1, 2}, {3, 4, 5}}, []byte{0x2, 0x2, 0x1, 0x0, 0x2, 0x0, 0x3, 0x3, 0x0, 0x4, 0x0, 0x5, 0x0})
+}
+
+func TestDecodeMalformedRegularSlice(t *testing.T) {
+	e := bcs.NewBytesEncoder()
+
+	const elemsCount100Billions = 100_000_000_000
+	e.WriteLen(elemsCount100Billions)
+	e.Encode(BasicWithCustomCodec("hello"))
+	e.Encode(BasicWithCustomCodec("world"))
+
+	_, err := bcs.Unmarshal[[]BasicWithCustomCodec](e.Bytes())
+	require.Error(t, err)
+	require.True(t, errors.Is(err, io.EOF))
+}
+
+func TestDecodeMalformedBytesSlice(t *testing.T) {
+	e := bcs.NewBytesEncoder()
+
+	const ramSize1000GB = 1000 * 1024 * 1024 * 1024
+	e.WriteLen(ramSize1000GB)
+	e.WriteByte(1)
+	e.WriteByte(2)
+	e.WriteByte(3)
+
+	_, err := bcs.Unmarshal[[]byte](e.Bytes())
+	require.Error(t, err)
+	require.True(t, errors.Is(err, io.EOF))
 }
 
 func TestMapCodec(t *testing.T) {

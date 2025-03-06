@@ -572,7 +572,7 @@ func (d *Decoder) decodeValue(v reflect.Value, typeOptionsFromTag *TypeOptions, 
 		if typeOptions.ArrayElement == nil {
 			typeOptions.ArrayElement = &ArrayElemOptions{}
 		}
-		err = d.decodeArray(v, typeOptions)
+		err = d.decodeArray(v, v.Len(), typeOptions)
 	case reflect.Map:
 		if typeOptions.MapKey == nil {
 			typeOptions.MapKey = &TypeOptions{}
@@ -843,6 +843,8 @@ func decodeConvertNumber3[To, From constraints.Numeric](d *Decoder, read func() 
 	return nil
 }
 
+const decodeSliceMaxPreallocSize = 100
+
 func (d *Decoder) decodeSlice(v reflect.Value, typeOpts TypeOptions) error {
 	length := d.ReadLen()
 
@@ -868,12 +870,16 @@ func (d *Decoder) decodeSlice(v reflect.Value, typeOpts TypeOptions) error {
 		return nil
 	}
 
-	v.Set(reflect.MakeSlice(v.Type(), length, length))
+	v.Set(reflect.MakeSlice(v.Type(), 0, min(length, decodeSliceMaxPreallocSize)))
 
-	return d.decodeArray(v, typeOpts)
+	return d.decodeArray(v, length, typeOpts)
 }
 
-func (d *Decoder) decodeArray(v reflect.Value, typeOpts TypeOptions) error {
+const decodeArrayMaxBufferSizeInBytes = 1024
+
+// func (d *Decoder) decodeArray(v reflect.Value, typeOpts TypeOptions) error {
+func (d *Decoder) decodeArray(v reflect.Value, n int, typeOpts TypeOptions) error {
+	isSlice := v.Kind() == reflect.Slice
 	elemType := v.Type().Elem()
 
 	// We take pointer because elements of array are addressable and
@@ -885,9 +891,15 @@ func (d *Decoder) decodeArray(v reflect.Value, typeOpts TypeOptions) error {
 
 	if !tInfo.HasCustomizations() {
 		// The type does not have any customizations. So we can use  some optimizations for encoding of basic types
-		if elemType.Kind() == reflect.Uint8 && (v.Kind() == reflect.Slice || v.CanAddr()) && !typeOpts.ArrayElement.AsByteArray {
+		if elemType.Kind() == reflect.Uint8 && (isSlice || v.CanAddr()) && !typeOpts.ArrayElement.AsByteArray {
 			// Optimization for []byte and [N]byte.
-			_, _ = d.Read(v.Bytes())
+			if isSlice {
+				b, _ := d.ReadN(n)
+				v.Set(reflect.ValueOf(b))
+			} else {
+				_, _ = d.Read(v.Bytes())
+			}
+
 			return nil
 		}
 
@@ -896,8 +908,11 @@ func (d *Decoder) decodeArray(v reflect.Value, typeOpts TypeOptions) error {
 
 	if typeOpts.ArrayElement.AsByteArray {
 		// Elements were encoded as byte arrays.
-		for i := 0; i < v.Len(); i++ {
+		for i := 0; i < n; i++ {
 			err := d.decodeAsByteArray(func() error {
+				if isSlice {
+					v.Set(reflect.Append(v, reflect.New(elemType).Elem()))
+				}
 				return d.decodeValue(v.Index(i).Addr(), nil, &tInfo)
 			})
 			if err != nil {
@@ -905,7 +920,10 @@ func (d *Decoder) decodeArray(v reflect.Value, typeOpts TypeOptions) error {
 			}
 		}
 	} else {
-		for i := 0; i < v.Len(); i++ {
+		for i := 0; i < n; i++ {
+			if isSlice {
+				v.Set(reflect.Append(v, reflect.New(elemType).Elem()))
+			}
 			if err := d.decodeValue(v.Index(i).Addr(), nil, &tInfo); err != nil {
 				return d.handleErrorf("[%v]: %w", i, err)
 			}

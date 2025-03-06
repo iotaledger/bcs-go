@@ -2,6 +2,8 @@ package bcs
 
 import (
 	"bytes"
+	"errors"
+	"io"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -31,9 +33,12 @@ func TestReadN(t *testing.T) {
 	testReadN(t, maxReadNBufferSize*3, maxReadNBufferSize*2)
 	testReadN(t, maxReadNBufferSize*3, maxReadNBufferSize*3-1)
 	testReadN(t, maxReadNBufferSize*3, maxReadNBufferSize*3)
+
+	const ramSize1000GB = 1000 * 1024 * 1024 * 1024
+	testReadN(t, maxReadNBufferSize*3, ramSize1000GB, io.EOF)
 }
 
-func testReadN(t *testing.T, dataSize, bytesToRead int) {
+func testReadN(t *testing.T, dataSize, bytesToRead int, expectedErr ...error) {
 	b := make([]byte, dataSize)
 	for i := 0; i < dataSize; i++ {
 		b[i] = byte(i) + 1
@@ -43,6 +48,10 @@ func testReadN(t *testing.T, dataSize, bytesToRead int) {
 	d := NewDecoder(r)
 
 	res, err := d.ReadN(bytesToRead)
-	require.NoError(t, err)
-	require.Equal(t, b[:bytesToRead], res)
+	if expectedErr == nil {
+		require.NoError(t, err)
+		require.Equal(t, b[:bytesToRead], res)
+	} else {
+		require.True(t, errors.Is(err, expectedErr[0]))
+	}
 }
