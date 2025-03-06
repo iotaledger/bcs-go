@@ -9,7 +9,7 @@ import (
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
-	"github.com/iotaledger/wasp/packages/util/bcs"
+	"github.com/iotaledger/bcs-go"
 )
 
 type BasicWithCustomCodec string

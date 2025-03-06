@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/iotaledger/wasp/packages/util/bcs"
+	"github.com/iotaledger/bcs-go"
 )
 
 func TestTimeCodec(t *testing.T) {

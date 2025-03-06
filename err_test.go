@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/iotaledger/wasp/packages/util/bcs"
+	"github.com/iotaledger/bcs-go"
 	"github.com/stretchr/testify/require"
 )
 

@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/maps"
 
-	"github.com/iotaledger/wasp/packages/util/bcs"
+	"github.com/iotaledger/bcs-go"
 )
 
 type InfEnum1 interface{}
