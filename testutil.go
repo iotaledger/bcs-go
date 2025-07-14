@@ -1,6 +1,8 @@
 package bcs
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"reflect"
 	"testing"
 
@@ -42,9 +44,34 @@ func TestCodec[V any](t *testing.T, v V, decodeInto ...V) []byte {
 //   - encoding and decoding succeed
 //   - decoded value is equal to the original
 //   - encoded value is equal to the expected bytes
-func TestCodecAndBytes[V any](t *testing.T, v V, expectedEnc []byte) {
-	vEnc := TestCodec(t, v)
+func TestCodecAndBytes[V any](t *testing.T, v V, expectedEnc []byte, decodeInto ...V) {
+	vEnc := TestCodec(t, v, decodeInto...)
 	require.Equal(t, expectedEnc, vEnc)
+}
+
+// Checks same as TestCodec, but also checks that hash of encoded value is equal to the expected hash.
+// This is useful to track unexpected changes in codec. e.g. to avoid accidentaly forgetting
+// to add migration in database or new version of API.
+//
+// How to use it:
+//  1. Run the test with exampe value and empty expected hash.
+//  2. Copy the expected hash from the test output.
+//  3. Add the expected hash to the test code.
+//  4. If then at some point in future you run the test and it fails,
+//     it means that encoding of the value has changed.
+//  5. Review the changes. If they are intended, add migration/API version to handle the change and avoid data corruption.
+//  6. Update the expected hash to new value.
+func TestCodecAndHash[V any](t *testing.T, v V, expectedHash string, decodeInto ...V) {
+	vEnc := TestCodec(t, v, decodeInto...)
+
+	h := md5.New()
+	_ = lo.Must(h.Write(vEnc))
+	vHash := h.Sum(nil)
+	vHashShort := vHash[:2]
+	vHashShort = append(vHashShort, vHash[7:9]...)
+	vHashShort = append(vHashShort, vHash[14:]...)
+	vHashShortStr := hex.EncodeToString(vHashShort)
+	require.Equal(t, expectedHash, vHashShortStr, "Encoded value bytes changed - consider reviewing the changes or update expected hash")
 }
 
 // Checks that encoding fails
