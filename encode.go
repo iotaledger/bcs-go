@@ -77,8 +77,9 @@ func MakeCustomEncoder[V any](f func(e *Encoder, v V) error) func(e *Encoder, v 
 	}
 }
 
-func AddCustomEncoder[V any](f func(e *Encoder, v V) error) {
+func AddCustomEncoder[V any](f func(e *Encoder, v V) error) struct{} {
 	CustomEncoders[reflect.TypeOf((*V)(nil)).Elem()] = MakeCustomEncoder(f)
+	return struct{}{}
 }
 
 func RemoveCustomEncoder[V any]() {

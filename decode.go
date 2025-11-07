@@ -149,8 +149,9 @@ func MakeCustomDecoder[V any](f func(e *Decoder, v *V) error) func(e *Decoder, v
 	}
 }
 
-func AddCustomDecoder[V any](f func(e *Decoder, v *V) error) {
+func AddCustomDecoder[V any](f func(e *Decoder, v *V) error) struct{} {
 	CustomDecoders[reflect.TypeOf((*V)(nil)).Elem()] = MakeCustomDecoder(f)
+	return struct{}{}
 }
 
 func RemoveCustomDecoder[V any]() {
