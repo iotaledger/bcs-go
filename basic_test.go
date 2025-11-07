@@ -531,6 +531,12 @@ func TestInfWithCustomCodec(t *testing.T) {
 		return nil
 	})
 
+	require.Panics(t, func() {
+		bcs.AddCustomEncoder(func(e *bcs.Encoder, v InfWithCustomCodec) error {
+			return nil
+		})
+	})
+
 	bcs.AddCustomDecoder(func(d *bcs.Decoder, v *InfWithCustomCodec) error {
 		switch d.ReadEnumIdx() {
 		case 0:
@@ -542,6 +548,12 @@ func TestInfWithCustomCodec(t *testing.T) {
 		}
 
 		return nil
+	})
+
+	require.Panics(t, func() {
+		bcs.AddCustomDecoder(func(d *bcs.Decoder, v *InfWithCustomCodec) error {
+			return nil
+		})
 	})
 
 	bcs.TestCodec(t, InfWithCustomCodec("aaa"))

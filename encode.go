@@ -78,7 +78,11 @@ func MakeCustomEncoder[V any](f func(e *Encoder, v V) error) func(e *Encoder, v 
 }
 
 func AddCustomEncoder[V any](f func(e *Encoder, v V) error) struct{} {
-	CustomEncoders[reflect.TypeOf((*V)(nil)).Elem()] = MakeCustomEncoder(f)
+	t := reflect.TypeOf((*V)(nil)).Elem()
+	if CustomEncoders[t] != nil {
+		panic(fmt.Errorf("custom encoder for type %v is already registered", t))
+	}
+	CustomEncoders[t] = MakeCustomEncoder(f)
 	return struct{}{}
 }
 

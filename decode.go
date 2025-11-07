@@ -150,7 +150,11 @@ func MakeCustomDecoder[V any](f func(e *Decoder, v *V) error) func(e *Decoder, v
 }
 
 func AddCustomDecoder[V any](f func(e *Decoder, v *V) error) struct{} {
-	CustomDecoders[reflect.TypeOf((*V)(nil)).Elem()] = MakeCustomDecoder(f)
+	t := reflect.TypeOf((*V)(nil)).Elem()
+	if CustomDecoders[t] != nil {
+		panic(fmt.Errorf("custom decoder for type %v is already registered", t))
+	}
+	CustomDecoders[t] = MakeCustomDecoder(f)
 	return struct{}{}
 }
 
