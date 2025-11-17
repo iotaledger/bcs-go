@@ -161,7 +161,7 @@ type TestStruct struct {
    A int
    B string
    C []byte `bcs:"-"` // excluded
-   d bool   `bcs:"export"` // notice fiels is unexported, but we force it to be exported through BCS
+   d bool   `bcs:"export"` // notice field is unexported, but we force it to be exported through BCS
 }
 
 v := TestStruct{10, "hello", true}
