@@ -62,7 +62,7 @@ dec.MustDecode(&v1)
 dec.MustDecode(&v2)
 ```
 
-**NOTE:** Althouth `Encode`() supports both value and pointer as argument, try prefering passing a pointer (see perf section)
+**NOTE:** Althouth `Encode()` supports both value and pointer as argument, prefere passing a pointer (see section about perf)
 
 #### Using BytesEncoder/BytesDecoder
 
@@ -118,7 +118,7 @@ if err := bcs.Marshal(&v); err != nil {
 }
 ```
 
-###### Deffered:
+###### Deferred:
 
 ```
 dec := bcs.NewDecoder(bytes.NewReader(encoded))
@@ -244,7 +244,7 @@ Interface can be serialized in three different ways:
 
 * **By default**, interface is encoded just as plain value. For decoding it **must** contain some value to specify an actual type.
 * If interface is registered as **enumeration** (see sections below), the library uses its registered enum specification for serialization. In that case, no need to preset value on decoding.
-* If structure's interface field is marked as **"not_enum"** (see sections below), the library ignores enum registration for that field.
+* If interface field is marked as **"not_enum"** (see sections below), the library ignores enum registration for that field.
 * If interface has custom serialization **functor**, that functor is used for serialization and everything else is ignored.
 
 If interface does not satisfy any of those criterias, serialization will return an **error**.
@@ -468,22 +468,19 @@ Special functions can be registered to customize serialization of a type. This h
 * Allows to implement custom serialization for **third-party types** (like it is implemented for **time.Time** and **big.Int**).
 * Allows to implement custom serialization for **interfaces**.
 
-It is convenient (but not required) to run register them upon program initialization using Golang's package **init()** function.
+It is convenient (but not required) to register them upon program initialization using Golang's package **init()** function or using `var _ = ...` global construct.
 It is permitted to register **separate functors** for the **type itself** and its **pointer type**.
 
 ```
-func init() {
-   AddCustomEncoder(func(e *Encoder, v time.Time) error {
-      e.w.WriteInt64(v.UnixNano())
-      return e.w.Err
-   })
+var _ = AddCustomEncoder(func(e *Encoder, v time.Time) error {
+  e.w.WriteInt64(v.UnixNano())
+  return e.w.Err
+})
 
-   AddCustomDecoder(func(d *Decoder, v *time.Time) error {
-      *v = time.Unix(0, d.r.ReadInt64())
-      return d.r.Err
-   })
-}
-
+var _ = AddCustomDecoder(func(d *Decoder, v *time.Time) error {
+  *v = time.Unix(0, d.r.ReadInt64())
+  return d.r.Err
+})
 ```
 
 #### Custom initialization
@@ -600,7 +597,7 @@ Applicable to: **interfaces, that are registered as enums.**
 
 #### Prefer passing pointer into Encode()
 
-Unlike from function `Marshal`(), method `Encode`() accepts both value and pointer. But passing by value will force encoder to copy value to make it addressable to support `MarshalBCS`() method with pointer receiver. It will also not work properly when interface is passed by value, because value is unpacked and packed again as `any` thus information about type of initial interface will be lost.
+Unlike from function `Marshal()`, method `Encode()` accepts both value and pointer. But passing by value will force encoder to copy value to make it addressable to support `MarshalBCS()` method with pointer receiver. It will also not work properly when interface is passed by value, because value is unpacked and packed again as `any` thus information about type of initial interface will be lost.
 So it is better to pass a pointer always when it is easy to do.
 
 #### Serialization of byte arrays is optimized
@@ -609,7 +606,7 @@ Arrays of bytes, whose elements does not have any customizations, are directly c
 
 #### Serialization of arrays of intergers is NOT yet optimized
 
-If elements of array are of integer type, and they dont have any customization specified for them (except of `"type=T"`), serialization of such array could be optimized to avoid redudant calls for each array element. But this not done specifically to keep code simple while it is maturing.
+If elements of array are of integer type, and they dont have any customization specified for them (except of `"type=T"`), serialization of such array could be optimized to avoid redudant calls for each array element. But for now this not done to keep code simple while it is still maturing.
 
 #### Type parsing is cached
 
@@ -618,7 +615,7 @@ To improve that, the type information is stored in cache.
 To avoid global mutex locks when reading/writing cache, atomic swapping is used instead.
 It works like that:
 
-* When coder is created, it get pointer to the current version of cache.
+* When coder is created, it gets pointer to the current version of cache.
 * Current version of cache is only read, never written, so multiple encoders can read it at the same time.
 * When coder is done with coding, it creates new cache with updated information.
 * Then it atomically swaps the pointer to the new cache with the pointer to the current cache.
